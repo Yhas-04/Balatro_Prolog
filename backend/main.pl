@@ -37,7 +37,7 @@ meta(3, 500).
 
 max_descartes(3).
 
-
+:- dynamic estado/3.
 estado(1, 0, 0).
 
 avaliar_mao(Cartas, Mao, Pontos) :-
@@ -105,7 +105,7 @@ contar(Item, [Outro | Resto], Quantidade) :-
 tem_flush(Naipes) :-
     member(Naipe, Naipes),
     contar(Naipe, Naipes, Quantidade),
-    Quantidade >= 5.
+    Quantidade = 5.
 
 tem_dois_pares(Faces) :-
     findall(Face, (member(Face, Faces), contar(Face, Faces, Qtd), Qtd >= 2), Pares),
