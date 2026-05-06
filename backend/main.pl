@@ -1,3 +1,8 @@
+:- use_module(library(http/thread_httpd)).
+:- use_module(library(http/http_dispatch)).
+:- use_module(library(http/http_json)).
+:- use_module(library(http/http_cors)).
+
 naipe(copas).
 naipe(espadas).
 naipe(ouros).
@@ -138,3 +143,32 @@ tem_cinco_seguidos(Valores) :-
     C is B + 1,
     D is C + 1,
     E is D + 1.
+
+
+%______________________________________________________________
+
+:- http_handler('/api/avaliar', handler_avaliar, [methods([post, options])]).
+:- http_handler('/api/estado', handler_estado, [methods([get, options])]).
+:- http_handler('/api/descartar', handler_descartar, [methods([post, options])]).
+:- http_handler('/api/novo_round', handler_novo_round, [methods([post, options])]).
+:- http_handler('/api/resetar', handler_resetar, [methods([post, options])]).
+
+start_server(Porta) :-
+    http_server(http_dispatch, [port(Porta)]).
+
+responder(Request, Dict) :-
+    format("Access-Control-Allow-Origin: *~n"),
+    format("Access-Control-Allow-Methods: GET, POST, OPTIONS~n"),
+    format("Access-Control-Allow-Headers: Content-Type~n"),
+    (   member(method(options), Request)
+    ->  format("Content-type: application/json~n~n"),
+        json_write_dict(current_output, _{ok:true}, [])
+    ;   reply_json_dict(Dict)
+    ).
+
+:- initialization(main).
+
+
+main :-
+    start_server(8080),
+    thread_get_message(_).
