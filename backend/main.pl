@@ -87,3 +87,54 @@ escolher_mao(Faces, _, _, par) :-
     tem_repetidas(Faces, 2), !.
 
 escolher_mao(_, _, _, carta_alta).
+
+contar(_, [], 0).
+contar(Item, [Item | Resto], Quantidade) :-
+    contar(Item, Resto, Parcial),
+    Quantidade is Parcial + 1.
+contar(Item, [Outro | Resto], Quantidade) :-
+    Item \= Outro,
+    contar(Item, Resto, Quantidade).
+
+    tem_repetidas(Lista, Minimo) :-
+    member(Item, Lista),
+    contar(Item, Lista, Quantidade),
+    Quantidade >= Minimo.
+
+
+tem_flush(Naipes) :-
+    member(Naipe, Naipes),
+    contar(Naipe, Naipes, Quantidade),
+    Quantidade >= 5.
+
+tem_dois_pares(Faces) :-
+    findall(Face, (member(Face, Faces), contar(Face, Faces, Qtd), Qtd >= 2), Pares),
+    sort(Pares, ParesSemRepetir),
+    length(ParesSemRepetir, Quantidade),
+    Quantidade >= 2.
+
+tem_full_house(Faces) :-
+    member(Trinca, Faces),
+    contar(Trinca, Faces, QtdTrinca),
+    QtdTrinca >= 3,
+    member(Par, Faces),
+    Trinca \= Par,
+    contar(Par, Faces, QtdPar),
+    QtdPar >= 2.
+
+tem_sequencia(Valores) :-
+    sort(Valores, SemRepetir),
+    tratar_as_baixo(SemRepetir, ValoresParaTeste),
+    tem_cinco_seguidos(ValoresParaTeste).
+
+tratar_as_baixo(Valores, [1 | Valores]) :-
+    member(14, Valores), !.
+tratar_as_baixo(Valores, Valores).
+
+
+tem_cinco_seguidos(Valores) :-
+    append(_, [A, B, C, D, E | _], Valores),
+    B is A + 1,
+    C is B + 1,
+    D is C + 1,
+    E is D + 1.
