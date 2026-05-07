@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="menu-lateral">
+  <div class="status">
+    <div class="status-item blind">
+      <div class="label">Blind</div>
+      <div class="value" id="round">1</div>
+    </div>
+    <div class="status-item pontos">
+      <div class="label">Pontos</div>
+      <div class="value" id="pontos">0</div>
+    </div>
+    <div class="status-item meta">
+      <div class="label">Meta</div>
+      <div class="value" id="meta">100</div>
+    </div>
+    <div class="status-item faltam">
+      <div class="label">Faltam</div>
+      <div class="value" id="faltam">100</div>
+    </div>
+    <div class="status-item desc">
+      <div class="label">Desc.</div>
+      <div class="value" id="descartes">3</div>
+    </div>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-bar">
+      <div class="progress-fill" id="barra"></div>
+    </div>
+    <div class="progress-label" id="barra-texto">0 / 100</div>
+  </div>
+
+  <div class="combo-box">
+    <div class="combo-nome" id="nome-mao">-</div>
+    <div class="combo-pts" id="pontos-mao">Nenhuma jogada ainda</div>
+  </div>
+</div>
+
+<div class="cartas-bottom">
+  <div class="titulo-area">Mesa</div>
+  <div class="mesa" id="mesa">
+    <span class="mesa-hint">...</span>
+  </div>
+
+<div class="titulo-area">Mao</div>
+<div class="hand-area" id="mao"></div>
+
+<div class="botoes">
+  <button class="btn-jogar" id="btn-jogar" onclick="jogar()" disabled>Jogar</button>
+  <button class="btn-descartar" id="btn-descartar" onclick="descartar()" disabled>Descartar</button>
+  <button class="btn-nova-mao" onclick="novaMao()">Nova mao</button>
+  <button class="btn-reset" onclick="resetar()">Reiniciar</button>
+</div>
+
+<div class="modal" id="modal">
+  <div class="modal-caixa">
+    <div class="modal-icone" id="modal-icone"></div>
+    <div class="modal-titulo" id="modal-titulo"></div>
+    <div class="modal-corpo" id="modal-corpo"></div>
+    <button id="modal-botao"></button>
+  </div>
+</div>
+
+<div class="log" id="log">
+</div>
+
+
+<script>
+const API = '/api';
+const naipes = ['copas', 'espadas', 'ouros', 'paus'];
+const faces = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'valete', 'dama', 'rei', 'as'];
+const simbolo = { copas: '♥', espadas: '♠', ouros: '♦', paus: '♣' };
+const cor = { copas: 'vermelho', espadas: 'preto', ouros: 'vermelho', paus: 'preto' };
+const nomeFace = { valete: 'J', dama: 'Q', rei: 'K', as: 'A' };
+const nomeMao = {
+  royal_flush: 'Royal Flush',
+  straight_flush: 'Straight Flush',
+  quadra: 'Quadra',
+  full_house: 'Full House',
+  flush: 'Flush',
+  sequencia: 'Sequencia',
+  trinca: 'Trinca',
+  dois_pares: 'Dois Pares',
+  par: 'Par',
+  carta_alta: 'Carta Alta'
+};
+
+let baralho = [];
+let mao = [];
+let selecionadas = [];
+
+async function chamarBackend(caminho, metodo = 'GET', corpo = null) {
+  const opcoes = { method: metodo, headers: { 'Content-Type': 'application/json' } };
+  if (corpo !== null) opcoes.body = JSON.stringify(corpo);
+
+  const resposta = await fetch(API + caminho, opcoes);
+  return await resposta.json();
+}
+
+
+function montarBaralho() {
+  baralho = [];
+
+  for (let n of naipes) {
+    for (let f of faces) {
+      baralho.push({ naipe: n, face: f });
+    }
+  }
+}
+
+
+function embaralhar(lista) {
+  const novaLista = [...lista];
+
+  for (let i = novaLista.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const aux = novaLista[i];
+    novaLista[i] = novaLista[j];
+    novaLista[j] = aux;
+  }
+
+  return novaLista;
+}
+
+
+function novaMao() {
+  mao = embaralhar(baralho).slice(0, 8);
+  selecionadas = [];
+  desenharMao();
+  limparMesa();
+  atualizarBotoes();
+  escreverLog('inf', 'Nova mao distribuida.');
+}
+
+
+function desenharMao() {
+  const div = document.getElementById('mao');
+  div.innerHTML = '';
+
+  for (let i = 0; i < mao.length; i++) {
+    div.appendChild(criarCarta(mao[i], i, true));
+  }
+}
+
+
+function criarCarta(carta, indice, podeClicar) {
+  const div = document.createElement('div');
+  const face = nomeFace[carta.face] || carta.face;
+  const naipe = simbolo[carta.naipe];
+
+  div.className = 'carta ' + cor[carta.naipe];
+  div.innerHTML = `
+    <div class="topo"><span class="v">${face}</span><span class="n">${naipe}</span></div>
+    <div class="c">${naipe}</div>
+    <div class="base"><span class="v">${face}</span><span class="n">${naipe}</span></div>
+  `;
+
+  if (selecionadas.includes(indice)) {
+    div.classList.add('selecionada');
+  }
+
+  if (podeClicar) {
+    div.onclick = function() {
+      selecionarCarta(indice);
+    };
+  } else {
+    div.style.cursor = 'default';
+  }
+
+  return div;
+}
+
+
+function selecionarCarta(indice) {
+  if (selecionadas.includes(indice)) {
+    selecionadas = selecionadas.filter(i => i !== indice);
+  } else {
+    if (selecionadas.length >= 5) {
+      escreverLog('err', 'Voce pode jogar no maximo 5 cartas.');
+      return;
+    }
+    selecionadas.push(indice);
+  }
+
+  desenharMao();
+  atualizarBotoes();
+}
+
+function atualizarBotoes() {
+  const temCarta = selecionadas.length > 0;
+  document.getElementById('btn-jogar').disabled = !temCarta;
+  document.getElementById('btn-descartar').disabled = !temCarta;
+}
+
+
+async function jogar() {
+  const cartas = selecionadas.map(i => mao[i]);
+  mostrarMesa(cartas);
+
+  try {
+    const dados = await chamarBackend('/avaliar', 'POST', { cartas: cartas });
+
+    document.getElementById('nome-mao').textContent = nomeMao[dados.mao] || dados.mao;
+    document.getElementById('pontos-mao').textContent = '+' + dados.pontos_rodada + ' pontos';
+
+    atualizarStatus(dados.pontuacao, dados.meta, dados.round);
+    escreverLog('ok', dados.mao + ' | +' + dados.pontos_rodada + ' pontos');
+
+    removerSelecionadas();
+
+    if (dados.venceu) {
+      abrirModal('OK', 'Round completo!', proximoRound);
+    }
+  } catch (erro) {
+    escreverLog('err', 'Erro ao chamar o Prolog.');
+  }
+}
+
+
+async function descartar() {
+  try {
+    const dados = await chamarBackend('/descartar', 'POST', { quantidade: selecionadas.length });
+
+    if (dados.erro) {
+      escreverLog('err', dados.erro);
+      return;
+    }
+
+    document.getElementById('descartes').textContent = dados.descartes_restantes;
+    removerSelecionadas();
+    limparMesa();
+    escreverLog('inf', 'Cartas descartadas.');
+  } catch (erro) {
+    escreverLog('err', 'Erro ao descartar.');
+  }
+}
+
+
+function removerSelecionadas() {
+  mao = mao.filter((carta, indice) => !selecionadas.includes(indice));
+  selecionadas = [];
+
+  while (mao.length < 8) {
+    comprarUmaCarta();
+  }
+
+  desenharMao();
+  atualizarBotoes();
+}
+
+
+function comprarUmaCarta() {
+  const usadas = mao.map(carta => carta.naipe + carta.face);
+  const disponiveis = baralho.filter(carta => !usadas.includes(carta.naipe + carta.face));
+  const carta = embaralhar(disponiveis)[0];
+  mao.push(carta);
+}
+
+
+function mostrarMesa(cartas) {
+  const mesa = document.getElementById('mesa');
+  mesa.innerHTML = '';
+
+  for (let carta of cartas) {
+    mesa.appendChild(criarCarta(carta, -1, false));
+  }
+}
+
+function limparMesa() {
+  document.getElementById('mesa').innerHTML = '<span class="mesa-hint">...</span>';
+}
+
+
+function atualizarStatus(pontos, meta, round) {
+  const faltam = Math.max(0, meta - pontos);
+  const porcentagem = Math.min(100, Math.round((pontos / meta) * 100));
+
+  document.getElementById('round').textContent = round;
+  document.getElementById('pontos').textContent = pontos;
+  document.getElementById('meta').textContent = meta;
+  document.getElementById('faltam').textContent = faltam;
+  document.getElementById('barra').style.width = porcentagem + '%';
+  document.getElementById('barra-texto').textContent = pontos + ' / ' + meta;
+}
+
+async function proximoRound() {
+  fecharModal();
+
+  const dados = await chamarBackend('/novo_round', 'POST');
+
+  if (dados.fim) {
+    abrirModal('FIM', resetar);
+    return;
+  }
+
+  atualizarStatus(0, dados.meta, dados.round);
+  document.getElementById('descartes').textContent = 3;
+  novaMao();
+}
+
+async function resetar() {
+  fecharModal();
+  await chamarBackend('/resetar', 'POST');
+
+  atualizarStatus(0, 100, 1);
+  document.getElementById('descartes').textContent = 3;
+  document.getElementById('nome-mao').textContent = '-';
+  document.getElementById('pontos-mao').textContent = 'Nenhuma jogada ainda';
+
+  novaMao();
+  escreverLog('inf', 'Jogo reiniciado.');
+}
+
+function escreverLog(tipo, texto) {
+  const log = document.getElementById('log');
+  const linha = document.createElement('p');
+
+  linha.className = tipo;
+  linha.textContent = '> ' + texto;
+  log.prepend(linha);
+}
+
+function abrirModal(icone, titulo, texto, textoBotao, acao) {
+  document.getElementById('modal-icone').textContent = icone;
+  document.getElementById('modal-titulo').textContent = titulo;
+  document.getElementById('modal-corpo').textContent = texto;
+  document.getElementById('modal-botao').textContent = textoBotao;
+  document.getElementById('modal-botao').onclick = acao;
+  document.getElementById('modal').classList.add('aberto');
+}
+
+function fecharModal() {
+  document.getElementById('modal').classList.remove('aberto');
+}
+
+
+async function iniciar() {
+  montarBaralho();
+
+  const dados = await buscarEstadoInicial();
+
+  if (dados !== null) {
+    atualizarStatus(dados.pontuacao, dados.meta, dados.round);
+    document.getElementById('descartes').textContent = dados.descartes_restantes;
+    escreverLog('ok', 'Prolog conectado.');
+  }
+
+  novaMao();
+}
+
+
+async function buscarEstadoInicial() {
+  for (let tentativa = 1; tentativa <= 3; tentativa++) {
+    try {
+      return await chamarBackend('/estado');
+    } catch (erro) {
+      await esperar(500);
+    }
+  }
+
+  return null;
+}
+
+function esperar(tempo) {
+  return new Promise(resolve => setTimeout(resolve, tempo));
+}
+
+iniciar();
+</script>
+</body>
+</html>

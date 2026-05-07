@@ -1,1 +1,22 @@
-file:///home/yhas/Documentos/IFC/Mat%C3%A9rias/ProgLog/Blatrolog/docker-compose.yml
+services:
+
+  prolog-backend:
+    build: ./backend
+    container_name: projetoProlog
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "swipl", "-g", "use_module(library(http/http_open)), setup_call_cleanup(http_open('http://localhost:8080/api/estado', In, []), close(In), true), halt(0)", "-t", "halt(1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build: ./frontend
+    container_name: projetoPrologFront
+    ports:
+      - "3000:80"
+    depends_on:
+      - prolog-backend
+    restart: unless-stopped
