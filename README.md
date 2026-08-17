@@ -1,4 +1,5 @@
 O jogador forma mãos de poker e tenta bater a meta de pontos de cada round.
+<img width="1909" height="948" alt="image" src="https://github.com/user-attachments/assets/e3c45087-56a6-47af-b4fc-0dd3265020a8" />
 
 ---
 
